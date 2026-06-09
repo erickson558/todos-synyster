@@ -1,0 +1,55 @@
+# release.yml — GitHub Actions: crea un release automático cuando se pushea un tag Vx.x.x
+#
+# Flujo:
+#   1. Developer hace: git tag V1.0.1 && git push origin V1.0.1
+#   2. Este workflow detecta el tag
+#   3. Lee CHANGELOG.md para extraer las notas del release
+#   4. Crea el GitHub Release con las notas
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'V*.*.*'      # Solo tags con formato Vx.x.x
+
+jobs:
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout del repositorio con el tag
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # 2. Leer la versión del tag
+      - name: Get version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      # 3. Extraer notas de CHANGELOG.md para esta versión
+      #    Busca la sección ## [Vx.x.x] y extrae hasta la siguiente sección ##
+      - name: Extract changelog notes
+        id: changelog
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          # Extraer sección del CHANGELOG entre este tag y el siguiente
+          NOTES=$(awk "/^## \[$VERSION\]/{flag=1; next} /^## \[V/{flag=0} flag" CHANGELOG.md)
+          # Guardar en archivo para el release (evita problemas con caracteres especiales)
+          echo "$NOTES" > release_notes.txt
+          echo "notes_file=release_notes.txt" >> $GITHUB_OUTPUT
+
+      # 4. Crear el release en GitHub
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Todos Synyster ${{ steps.version.outputs.VERSION }}"
+          tag_name: ${{ steps.version.outputs.VERSION }}
+          body_path: release_notes.txt
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

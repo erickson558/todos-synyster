@@ -1,0 +1,21 @@
+# Base de datos SQLite (datos de usuario — nunca al repo)
+data/todos.db
+data/*.db
+data/*.db-wal
+data/*.db-shm
+
+# Adjuntos subidos por el usuario
+data/uploads/
+
+# Archivos de sistema Windows
+Thumbs.db
+Desktop.ini
+*.lnk
+
+# Editores
+.vscode/
+*.suo
+*.user
+
+# Logs
+*.log

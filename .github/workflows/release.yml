@@ -13,10 +13,16 @@ on:
     tags:
       - 'V*.*.*'      # Solo tags con formato Vx.x.x
 
+# Permiso explícito para que GITHUB_TOKEN pueda crear releases
+permissions:
+  contents: write
+
 jobs:
   release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true   # Usar Node.js 24 antes de que sea forzado el 16 jun 2026
 
     steps:
       # 1. Checkout del repositorio con el tag

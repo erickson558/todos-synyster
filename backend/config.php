@@ -5,7 +5,7 @@
  */
 
 define('APP_NAME',    'Todos Synyster');
-define('APP_VERSION', 'V1.0.0');
+define('APP_VERSION', 'V1.1.0');
 
 // Ruta absoluta a la base de datos SQLite
 define('DB_PATH', __DIR__ . '/../data/todos.db');

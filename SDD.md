@@ -1,6 +1,6 @@
 # SDD – Todos Synyster
 **Spec Driven Development Document**
-Version: V1.0.0 | Last updated: 2026-06-09
+Version: V1.1.0 | Last updated: 2026-06-10
 
 ---
 
@@ -81,11 +81,13 @@ todossynyster/
 ├── .claude/
 │   ├── agents/
 │   │   ├── todos-dev.md         # Agente principal de desarrollo
-│   │   └── devops.md            # Agente DevOps y releases
+│   │   ├── devops.md            # Agente DevOps y releases
+│   │   └── qa.md                # Agente QA y testing
 │   └── commands/
 │       ├── github-push.md       # Skill: commit y push
 │       ├── release.md           # Skill: crear release
-│       └── comment-code.md      # Skill: comentar código
+│       ├── comment-code.md      # Skill: comentar código
+│       └── test-api.md          # Skill: smoke-test de endpoints REST
 └── .github/
     └── workflows/
         └── release.yml          # Release automático por tag
@@ -251,6 +253,7 @@ Simple sesión PHP (sin usuario/password para uso personal local). `session_star
 ### Extra (sobre Todoist)
 - [x] Multi-idioma (ES / EN / FR)
 - [x] Botón "Buy me a beer" PayPal
+- [x] Alertas automáticas de fecha límite (Notification API + toast, cada 60s)
 
 ---
 
@@ -293,8 +296,23 @@ Archivos a sincronizar:
 
 ---
 
-## 11. Historial de cambios al SDD
+## 11. Notas de implementación críticas
+
+### Cast de enteros en API (bug histórico)
+PHP PDO SQLite devuelve todos los valores como strings. `completed = 0` llega al JS como `"0"` (string truthy) → tarea aparece tachada. Solución en `api/tasks.php`: castear `id`, `completed`, `priority`, `sort_order` a `(int)` antes del `json_encode`.
+
+### Sistema de alertas de deadline
+`initDeadlineChecker()` en `app.js`:
+- Solicita permiso `Notification` al arrancar
+- `setInterval(checkDeadlines, 60000)` compara tareas pendientes con `new Date()`
+- Persiste IDs alertados en `localStorage` key `ts_alerted_YYYY-MM-DD` para no repetir
+- Limpia claves de días anteriores en cada arranque
+
+---
+
+## 12. Historial de cambios al SDD
 
 | Versión | Fecha | Cambio |
 |---------|-------|--------|
+| V1.1.0 | 2026-06-10 | Bug fix completed string; alertas deadline; mejoras visuales; agente QA; skill test-api |
 | V1.0.0 | 2026-06-09 | Creación inicial del SDD |

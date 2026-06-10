@@ -207,6 +207,7 @@ var App = (function () {
   }
 
   function renderTaskItem(t, isSubtask) {
+    var isDone  = +t.completed === 1;
     var dClass  = dateClass(t.due_date);
     var dText   = t.due_date ? fmtDate(t.due_date) + (t.due_time ? ' ' + t.due_time : '') : '';
     var labels  = (t.labels || []).map(function (l) {
@@ -225,9 +226,9 @@ var App = (function () {
       ? '<span class="task-due ' + dClass + '">📅 ' + escHtml(dText) + '</span>'
       : '';
 
-    return '<div class="task-item' + (t.completed ? ' completed' : '') + '" data-id="' + t.id + '" data-priority="' + t.priority + '">' +
+    return '<div class="task-item' + (isDone ? ' completed' : '') + '" data-id="' + t.id + '" data-priority="' + t.priority + '">' +
       '<span class="task-drag-handle" title="' + i18n.t('drag') + '">⠿</span>' +
-      '<div class="task-check' + (t.completed ? ' checked' : '') + '" data-id="' + t.id + '" data-done="' + t.completed + '"></div>' +
+      '<div class="task-check' + (isDone ? ' checked' : '') + '" data-id="' + t.id + '" data-done="' + t.completed + '"></div>' +
       '<div class="task-content">' +
         '<div class="task-title">' + escHtml(t.title) + '</div>' +
         '<div class="task-meta">' + dueHtml + projectTag + labels + subInfo + '</div>' +
@@ -832,6 +833,81 @@ var App = (function () {
     });
   }
 
+  /* ── Alertas de fechas límite ──────────────────────────────── */
+  var _alerted = {};
+
+  function _todayStr() {
+    var d  = new Date();
+    var mm = d.getMonth() + 1;
+    var dd = d.getDate();
+    return d.getFullYear() + '-' + (mm < 10 ? '0' : '') + mm + '-' + (dd < 10 ? '0' : '') + dd;
+  }
+
+  function initDeadlineChecker() {
+    if (window.Notification && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+
+    var todayKey = 'ts_alerted_' + _todayStr();
+    try {
+      _alerted = JSON.parse(localStorage.getItem(todayKey) || '{}');
+    } catch (e) {
+      _alerted = {};
+    }
+
+    // Limpiar alertas de días anteriores para no saturar localStorage
+    for (var k in localStorage) {
+      if (String(k).indexOf('ts_alerted_') === 0 && k !== todayKey) {
+        try { localStorage.removeItem(k); } catch (e2) {}
+      }
+    }
+
+    checkDeadlines();
+    setInterval(checkDeadlines, 60000); // revisar cada 60 segundos
+  }
+
+  function checkDeadlines() {
+    var now      = new Date();
+    var todayStr = _todayStr();
+    var todayKey = 'ts_alerted_' + todayStr;
+
+    for (var i = 0; i < state.tasks.length; i++) {
+      var t = state.tasks[i];
+      if (+t.completed === 1 || !t.due_date) { continue; }
+      if (t.due_date > todayStr)             { continue; }
+
+      var key = String(t.id);
+      if (_alerted[key]) { continue; }
+
+      var dueMs;
+      if (t.due_time) {
+        dueMs = new Date(t.due_date + 'T' + t.due_time).getTime();
+      } else {
+        dueMs = new Date(t.due_date + 'T00:00:00').getTime();
+      }
+
+      if (now.getTime() >= dueMs) {
+        _alerted[key] = true;
+        try { localStorage.setItem(todayKey, JSON.stringify(_alerted)); } catch (e) {}
+        fireDeadlineAlert(t);
+      }
+    }
+  }
+
+  function fireDeadlineAlert(task) {
+    var timeInfo = task.due_time ? ' — ' + task.due_time : ' — Hoy';
+    showToast('⏰ Vence: ' + task.title + timeInfo, 'warning');
+
+    if (window.Notification && Notification.permission === 'granted') {
+      try {
+        new Notification('⏰ Todos Synyster — Fecha límite', {
+          body: task.title + timeInfo,
+          tag:  'deadline-' + task.id,
+        });
+      } catch (e) {}
+    }
+  }
+
   /* ── Escape Html ────────────────────────────────────────── */
   function escHtml(str) {
     if (!str) return '';
@@ -870,6 +946,7 @@ var App = (function () {
       });
 
       refresh();
+      initDeadlineChecker();
     });
   }
 

@@ -136,8 +136,15 @@ function getTasks($db) {
     $stmt->execute();
     $tasks = $stmt->fetchAll();
 
-    // Adjuntar etiquetas a cada tarea
+    // Adjuntar etiquetas y castear tipos enteros (PDO SQLite devuelve todo como string)
     foreach ($tasks as &$task) {
+        $task['id']           = (int)$task['id'];
+        $task['completed']    = (int)$task['completed'];
+        $task['priority']     = (int)$task['priority'];
+        $task['sort_order']   = (int)$task['sort_order'];
+        $task['project_id']   = isset($task['project_id'])  ? (int)$task['project_id']  : null;
+        $task['parent_id']    = isset($task['parent_id'])   ? (int)$task['parent_id']   : null;
+        $task['section_id']   = isset($task['section_id'])  ? (int)$task['section_id']  : null;
         $task['labels']       = getTaskLabels($db, $task['id']);
         $task['subtask_count'] = getSubtaskCount($db, $task['id']);
     }
